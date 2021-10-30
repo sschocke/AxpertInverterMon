@@ -1,6 +1,8 @@
 using System.IO.Ports;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using RabbitMQ.Client;
 
 namespace InverterMon;
 
@@ -38,61 +40,132 @@ public class Worker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await Task.Yield();
+        var mq = new ConnectionFactory();
+        mq.HostName = _config.GetValue<string>("MQHost");
+        mq.UserName = _config.GetValue<string>("MQUser");
+        mq.Password = _config.GetValue<string>("MQPassword");
+        mq.VirtualHost = "/";
 
-        while (!stoppingToken.IsCancellationRequested)
+        using (var mqConn = mq.CreateConnection())
         {
-            _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-            try
+            using (var channel = mqConn.CreateModel())
             {
-                _port.Open();
-                // query(port, "QVFW");
-                var modeBuf = query("QMOD");
-                var matches = Regex.Matches(modeBuf, @"\((L|B|P|S|F|H)", RegexOptions.IgnoreCase);
-                if (matches.Count == 1 && matches[0].Groups.Count == 2) {
-                    switch(matches[0].Groups[1].Value)
+                channel.ExchangeDeclare("inverter", ExchangeType.Topic, false, false);
+
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+                    try
                     {
-                        case "B":
-                            _logger.LogInformation("Currently in battery mode");
-                            break;
-                        case "L":
-                            _logger.LogInformation("Currently in line mode");
-                            break;
+                        var status = new InverterStatus();
+                        var success = true;
+                        _port.Open();
+                        // query(port, "QVFW");
+                        var modeBuf = query("QMOD");
+                        var matches = Regex.Matches(modeBuf, RegexConstants.QMODregex, RegexOptions.IgnoreCase);
+                        if (matches.Count == 1 && matches[0].Groups.Count == 2)
+                        {
+                            switch (matches[0].Groups[1].Value)
+                            {
+                                case "B":
+                                    _logger.LogInformation("Currently in battery mode");
+                                    status.Mode = "Battery";
+                                    break;
+                                case "L":
+                                    _logger.LogInformation("Currently in line mode");
+                                    status.Mode = "Line";
+                                    break;
+                                default:
+                                    _logger.LogInformation("Unknown mode");
+                                    success = false;
+                                    break;
+                            }
+                        }
+
+                        var valsBuf = query("QPIGS");
+                        matches = Regex.Matches(valsBuf, RegexConstants.QPIGSregex, RegexOptions.IgnoreCase);
+                        if (matches.Count == 1 && matches[0].Groups.Count == 25)
+                        {
+                            success &= double.TryParse(matches[0].Groups[1].Value, out var gridVoltage);
+                            success &= double.TryParse(matches[0].Groups[2].Value, out var gridFrequency);
+                            success &= double.TryParse(matches[0].Groups[3].Value, out var outputVoltage);
+                            success &= double.TryParse(matches[0].Groups[4].Value, out var outputFrequency);
+                            success &= int.TryParse(matches[0].Groups[5].Value, out var loadVA);
+                            success &= int.TryParse(matches[0].Groups[6].Value, out var loadWatt);
+                            success &= int.TryParse(matches[0].Groups[7].Value, out var loadPercentage);
+                            success &= int.TryParse(matches[0].Groups[8].Value, out var busVoltage);
+                            success &= double.TryParse(matches[0].Groups[9].Value, out var batteryVoltage);
+                            success &= int.TryParse(matches[0].Groups[10].Value, out var batteryChargeCurrent);
+                            success &= int.TryParse(matches[0].Groups[11].Value, out var batteryCapacity);
+                            success &= int.TryParse(matches[0].Groups[12].Value, out var heatsinkTemperature);
+                            success &= int.TryParse(matches[0].Groups[13].Value, out var pvInputCurrent);
+                            success &= double.TryParse(matches[0].Groups[14].Value, out var pvInputVoltage);
+                            success &= double.TryParse(matches[0].Groups[15].Value, out var sccVoltage);
+                            success &= int.TryParse(matches[0].Groups[16].Value, out var batteryDischargeCurrent);
+                            var loadStatusOn = matches[0].Groups[20].Value == "1";
+                            var sccChargeOn = matches[0].Groups[23].Value == "1";
+                            var acChargeOn = matches[0].Groups[24].Value == "1";
+                            if (success)
+                            {
+                                _logger.LogInformation($"Grid Voltage: {gridVoltage}V");
+                                status.GridVoltage = gridVoltage;
+                                _logger.LogInformation($"Grid Frequency: {gridFrequency}Hz");
+                                status.GridFrequency = gridFrequency;
+                                _logger.LogInformation($"Output Voltage: {outputVoltage}V");
+                                status.OutputVoltage = outputVoltage;
+                                _logger.LogInformation($"Output Frequency: {outputFrequency}Hz");
+                                status.OutputFrequency = outputFrequency;
+                                _logger.LogInformation($"Load: {loadVA}VA");
+                                status.LoadVA = loadVA;
+                                _logger.LogInformation($"Load: {loadWatt}W");
+                                status.LoadWatt = loadWatt;
+                                _logger.LogInformation($"Load: {loadPercentage}%");
+                                status.LoadPercentage = loadPercentage;
+                                _logger.LogInformation($"Bus Voltage: {busVoltage}V");
+                                status.BusVoltage = busVoltage;
+                                _logger.LogInformation($"Battery Voltage: {batteryVoltage}V");
+                                status.BatteryVoltage = batteryVoltage;
+                                _logger.LogInformation($"Battery Charge Current: {batteryChargeCurrent}A");
+                                status.BatteryChargeCurrent = batteryChargeCurrent;
+                                _logger.LogInformation($"Battery Capacity: {batteryCapacity}%");
+                                status.BatteryCapacity = batteryCapacity;
+                                _logger.LogInformation($"Battery Discharge Current: {batteryDischargeCurrent}A");
+                                status.BatteryDischargeCurrent = batteryDischargeCurrent;
+                                _logger.LogInformation($"Heatsink Temperature: {heatsinkTemperature}");
+                                status.HeatsinkTemperature = heatsinkTemperature;
+                                _logger.LogInformation($"PV Input Current: {pvInputCurrent}A");
+                                status.PvInputCurrent = pvInputCurrent;
+                                _logger.LogInformation($"PV Input Voltage: {pvInputVoltage}V");
+                                status.PvInputVoltage = pvInputVoltage;
+                                _logger.LogInformation($"SCC Voltage: {sccVoltage}V");
+                                status.SccVoltage = sccVoltage;
+                                _logger.LogInformation($"Load On: {loadStatusOn}");
+                                status.LoadStatusOn = loadStatusOn;
+                                _logger.LogInformation($"SCC Charge: {sccChargeOn}");
+                                status.SccChargeOn = sccChargeOn;
+                                _logger.LogInformation($"AC Charge: {acChargeOn}");
+                                status.AcChargeOn = acChargeOn;
+                            }
+                        }
+                        // query("QPIRI");
+                        // query("QPIWS");
+                        _port.Close();
+
+                        if (success) {
+                            var statusStr = JsonSerializer.Serialize(status);
+                            var body = Encoding.UTF8.GetBytes(statusStr);
+                            var bodySpan = new ReadOnlyMemory<byte>(body);
+
+                            channel.BasicPublish("inverter", "status", null, bodySpan);
+                        }
                     }
+                    catch (System.Exception)
+                    {
+                        _logger.LogError("Could not read inverter");
+                    }
+                    await Task.Delay(5000, stoppingToken);
                 }
-                var valsBuf = query("QPIGS");
-                matches = Regex.Matches(valsBuf, @"\(([\d.]+)\s*([\d.]+)\s*([\d.]+)\s*([\d.]+)\s*\s*([\d]+)\s*([\d]+)\s*([\d]+)\s*([\d]+)\s*([\d.]+)\s*([\d]+)\s*([\d]+)\s*([\d]+)", RegexOptions.IgnoreCase);
-                if (matches.Count == 1 && matches[0].Groups.Count == 13) {
-                    if (double.TryParse(matches[0].Groups[1].Value, out var gridVoltage)) {
-                        _logger.LogInformation($"Grid Voltage: {gridVoltage}V");
-                    }
-                    if (double.TryParse(matches[0].Groups[2].Value, out var gridFrequency)) {
-                        _logger.LogInformation($"Grid Frequency: {gridFrequency}Hz");
-                    }
-                    if (double.TryParse(matches[0].Groups[3].Value, out var outputVoltage)) {
-                        _logger.LogInformation($"Output Voltage: {outputVoltage}V");
-                    }
-                    if (double.TryParse(matches[0].Groups[4].Value, out var outputFrequency)) {
-                        _logger.LogInformation($"Output Frequency: {outputFrequency}Hz");
-                    }
-                    if (int.TryParse(matches[0].Groups[5].Value, out var loadVA)) {
-                        _logger.LogInformation($"Load: {loadVA}VA");
-                    }
-                    if (int.TryParse(matches[0].Groups[6].Value, out var loadWatt)) {
-                        _logger.LogInformation($"Load: {loadWatt}W");
-                    }
-                    if (int.TryParse(matches[0].Groups[7].Value, out var loadPercentage)) {
-                        _logger.LogInformation($"Load: {loadPercentage}%");
-                    }
-                }
-                query("QPIRI");
-                query("QPIWS");
-                _port.Close();
             }
-            catch (System.Exception)
-            {
-                _logger.LogError("Could not read inverter");
-            }
-            await Task.Delay(5000, stoppingToken);
         }
     }
     UInt16 CalcCRC(byte[] buffer)

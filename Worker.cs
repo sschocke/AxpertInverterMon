@@ -54,7 +54,7 @@ public class Worker : BackgroundService
 
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+                    _logger.LogDebug("Worker running at: {time}", DateTimeOffset.Now);
                     try
                     {
                         var status = new InverterStatus();
@@ -68,15 +68,15 @@ public class Worker : BackgroundService
                             switch (matches[0].Groups[1].Value)
                             {
                                 case "B":
-                                    _logger.LogInformation("Currently in battery mode");
+                                    _logger.LogDebug("Currently in battery mode");
                                     status.Mode = "Battery";
                                     break;
                                 case "L":
-                                    _logger.LogInformation("Currently in line mode");
+                                    _logger.LogDebug("Currently in line mode");
                                     status.Mode = "Line";
                                     break;
                                 default:
-                                    _logger.LogInformation("Unknown mode");
+                                    _logger.LogError("Unknown mode");
                                     success = false;
                                     break;
                             }
@@ -107,43 +107,43 @@ public class Worker : BackgroundService
                             var acChargeOn = matches[0].Groups[24].Value == "1";
                             if (success)
                             {
-                                _logger.LogInformation($"Grid Voltage: {gridVoltage}V");
+                                _logger.LogDebug($"Grid Voltage: {gridVoltage}V");
                                 status.GridVoltage = gridVoltage;
-                                _logger.LogInformation($"Grid Frequency: {gridFrequency}Hz");
+                                _logger.LogDebug($"Grid Frequency: {gridFrequency}Hz");
                                 status.GridFrequency = gridFrequency;
-                                _logger.LogInformation($"Output Voltage: {outputVoltage}V");
+                                _logger.LogDebug($"Output Voltage: {outputVoltage}V");
                                 status.OutputVoltage = outputVoltage;
-                                _logger.LogInformation($"Output Frequency: {outputFrequency}Hz");
+                                _logger.LogDebug($"Output Frequency: {outputFrequency}Hz");
                                 status.OutputFrequency = outputFrequency;
-                                _logger.LogInformation($"Load: {loadVA}VA");
+                                _logger.LogDebug($"Load: {loadVA}VA");
                                 status.LoadVA = loadVA;
-                                _logger.LogInformation($"Load: {loadWatt}W");
+                                _logger.LogDebug($"Load: {loadWatt}W");
                                 status.LoadWatt = loadWatt;
-                                _logger.LogInformation($"Load: {loadPercentage}%");
+                                _logger.LogDebug($"Load: {loadPercentage}%");
                                 status.LoadPercentage = loadPercentage;
-                                _logger.LogInformation($"Bus Voltage: {busVoltage}V");
+                                _logger.LogDebug($"Bus Voltage: {busVoltage}V");
                                 status.BusVoltage = busVoltage;
-                                _logger.LogInformation($"Battery Voltage: {batteryVoltage}V");
+                                _logger.LogDebug($"Battery Voltage: {batteryVoltage}V");
                                 status.BatteryVoltage = batteryVoltage;
-                                _logger.LogInformation($"Battery Charge Current: {batteryChargeCurrent}A");
+                                _logger.LogDebug($"Battery Charge Current: {batteryChargeCurrent}A");
                                 status.BatteryChargeCurrent = batteryChargeCurrent;
-                                _logger.LogInformation($"Battery Capacity: {batteryCapacity}%");
+                                _logger.LogDebug($"Battery Capacity: {batteryCapacity}%");
                                 status.BatteryCapacity = batteryCapacity;
-                                _logger.LogInformation($"Battery Discharge Current: {batteryDischargeCurrent}A");
+                                _logger.LogDebug($"Battery Discharge Current: {batteryDischargeCurrent}A");
                                 status.BatteryDischargeCurrent = batteryDischargeCurrent;
-                                _logger.LogInformation($"Heatsink Temperature: {heatsinkTemperature}");
+                                _logger.LogDebug($"Heatsink Temperature: {heatsinkTemperature}");
                                 status.HeatsinkTemperature = heatsinkTemperature;
-                                _logger.LogInformation($"PV Input Current: {pvInputCurrent}A");
+                                _logger.LogDebug($"PV Input Current: {pvInputCurrent}A");
                                 status.PvInputCurrent = pvInputCurrent;
-                                _logger.LogInformation($"PV Input Voltage: {pvInputVoltage}V");
+                                _logger.LogDebug($"PV Input Voltage: {pvInputVoltage}V");
                                 status.PvInputVoltage = pvInputVoltage;
-                                _logger.LogInformation($"SCC Voltage: {sccVoltage}V");
+                                _logger.LogDebug($"SCC Voltage: {sccVoltage}V");
                                 status.SccVoltage = sccVoltage;
-                                _logger.LogInformation($"Load On: {loadStatusOn}");
+                                _logger.LogDebug($"Load On: {loadStatusOn}");
                                 status.LoadStatusOn = loadStatusOn;
-                                _logger.LogInformation($"SCC Charge: {sccChargeOn}");
+                                _logger.LogDebug($"SCC Charge: {sccChargeOn}");
                                 status.SccChargeOn = sccChargeOn;
-                                _logger.LogInformation($"AC Charge: {acChargeOn}");
+                                _logger.LogDebug($"AC Charge: {acChargeOn}");
                                 status.AcChargeOn = acChargeOn;
                             }
                         }

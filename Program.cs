@@ -9,6 +9,9 @@ IHost host = Host.CreateDefaultBuilder(args)
     {
         logging.ClearProviders();
         logging.AddConsole();
+        logging.AddLogServerLogger(configure => {
+            configure.Name = "Axpert Inverter Monitor Log";
+        });
     })
     .Build();
 

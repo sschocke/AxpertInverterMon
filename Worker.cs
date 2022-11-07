@@ -149,7 +149,6 @@ public class Worker : BackgroundService
                         }
                         // query("QPIRI");
                         // query("QPIWS");
-                        _port.Close();
 
                         if (success) {
                             var statusStr = JsonSerializer.Serialize(status);
@@ -163,6 +162,11 @@ public class Worker : BackgroundService
                     {
                         _logger.LogError("Could not read inverter");
                     }
+                    finally
+                    {
+                        _port.Close();
+                    }
+                    
                     await Task.Delay(5000, stoppingToken);
                 }
             }

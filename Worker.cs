@@ -39,6 +39,7 @@ public class Worker : BackgroundService
     // }
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _logger.LogInformation("Axpert InverterMon starting...");
         await Task.Yield();
         var mq = new ConnectionFactory();
         mq.HostName = _config.GetValue<string>("MQHost");

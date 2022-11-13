@@ -12,8 +12,10 @@ public sealed class LogServerLogger : ILogger, IDisposable
 
     public void Dispose()
     {
-        server.Stop();
-        server.Join();
+        if (server.Active) {
+            server.Stop();
+            server.Join();
+        }
     }
 
     public IDisposable BeginScope<TState>(TState state) => default!;

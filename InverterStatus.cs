@@ -1,6 +1,6 @@
 namespace InverterMon;
 
-public class InverterStatus
+public record InverterStatus
 {
     public string Mode { get; set; } = "Unknown";
     public double GridVoltage { get; set; }

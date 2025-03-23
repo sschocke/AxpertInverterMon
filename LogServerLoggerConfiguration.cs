@@ -1,3 +1,5 @@
+namespace InverterMon;
+
 public sealed class LogServerLoggerConfiguration
 {
     public string Name { get; set; } = "Scorpio Log Server";

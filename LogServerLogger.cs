@@ -1,5 +1,7 @@
 using ScorpioConcepts.Framework.LogServer;
 
+namespace InverterMon;
+
 public sealed class LogServerLogger : ILogger, IDisposable
 {
     private readonly LogServer server;
@@ -12,7 +14,8 @@ public sealed class LogServerLogger : ILogger, IDisposable
 
     public void Dispose()
     {
-        if (server.Active) {
+        if (server.Active)
+        {
             server.Stop();
             server.Join();
         }

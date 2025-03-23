@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Configuration;
 
+namespace InverterMon;
+
 public static class LogServerLoggerExtensions
 {
     public static ILoggingBuilder AddLogServerLogger(this ILoggingBuilder builder)

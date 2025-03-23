@@ -1,6 +1,8 @@
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Options;
 
+namespace InverterMon;
+
 [UnsupportedOSPlatform("browser")]
 [ProviderAlias("LogServer")]
 public class LogServerProvider : ILoggerProvider
@@ -11,7 +13,8 @@ public class LogServerProvider : ILoggerProvider
     private LogServerLoggerConfiguration _currentConfig;
     private LogServerLogger? _logger;
 
-    public LogServerProvider(IOptionsMonitor<LogServerLoggerConfiguration> config) {
+    public LogServerProvider(IOptionsMonitor<LogServerLoggerConfiguration> config)
+    {
         _currentConfig = config.CurrentValue;
         _onChangeToken = config.OnChange(updatedConfig => _currentConfig = updatedConfig);
     }

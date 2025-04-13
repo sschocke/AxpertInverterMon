@@ -26,7 +26,9 @@ public class Worker : BackgroundService
             BaudRate = 2400,
             StopBits = StopBits.One,
             Parity = Parity.None,
-            DataBits = 8
+            DataBits = 8,
+            ReadTimeout = 30 * 1000,
+            WriteTimeout = 30 * 1000,
         };
     }
 
@@ -59,6 +61,14 @@ public class Worker : BackgroundService
 
                 var success = QueryMode(status);
                 success &= QueryVals(status);
+
+                if (!success)
+                {
+                    _logger.LogError("Could not read inverter status");
+                    if (_port.IsOpen) _port.Close();
+                    await Task.Delay(30000, stoppingToken);
+                    continue;
+                }
 
                 if (success && prevStatus == null)
                 {

@@ -96,7 +96,7 @@ public class Worker : BackgroundService
             }
             catch (System.Exception ex)
             {
-                _logger.LogError(ex, "Could not read inverter");
+                _logger.LogError(ex, "Could not read inverter - {ExceptionMessage}", ex.Message);
             }
             finally
             {
